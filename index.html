@@ -75,6 +75,15 @@
             font-size: 20px;
             cursor: pointer;
         }
+        .delete-page-btn {
+            padding: 10px 16px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 20px;
+            cursor: pointer;
+        }
         .edit-lock-btn {
             padding: 10px 16px;
             background: #333;
@@ -278,6 +287,7 @@
         <div class="code-header">
             <select class="page-select" id="pageSelect" onchange="switchPage()"></select>
             <button class="add-page-btn" id="addPageBtn">+</button>
+            <button class="delete-page-btn" id="deletePageBtn">🗑️</button>
             <button class="edit-lock-btn" id="editLockBtn">👁️</button>
         </div>
         <div class="test-log" id="testLog">测试日志将显示在这里...</div>
@@ -348,16 +358,17 @@ output=My_V2.apk</textarea>
         const T_TOOL_PATH = "/sdcard/T/";
         const OUTPUT_PATH = "/sdcard/Download/";
 
-        // 本地存储 KEY
         const STORAGE_KEY = "My_App_Data";
+        const SOFTWARE_STORAGE_KEY = "My_Software_Data";
 
         window.onload = function() {
             loadFromLocalStorage();
+            loadSoftwareFromLocalStorage();
             initPageSelect();
             requestStoragePermission();
+            document.getElementById('deletePageBtn').onclick = deleteCurrentPage;
         };
 
-        // 从本地读取所有数据
         function loadFromLocalStorage() {
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
@@ -371,17 +382,54 @@ output=My_V2.apk</textarea>
             }
         }
 
-        // 保存所有数据到本地
         function saveToLocalStorage() {
             try {
-                const data = {
-                    pages: pages,
-                    currentPageIndex: currentPageIndex
-                };
+                const data = { pages: pages, currentPageIndex: currentPageIndex };
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            } catch (e) {
-                console.log("保存本地数据失败");
-            }
+            } catch (e) { console.log("保存失败"); }
+        }
+
+        function loadSoftwareFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem(SOFTWARE_STORAGE_KEY);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    const list = document.getElementById('softwareList');
+                    const inputWrapper = document.getElementById('softwareInputWrapper');
+                    const addBtn = list.querySelector('.add-software-btn');
+                    
+                    list.innerHTML = '';
+                    list.appendChild(inputWrapper);
+                    
+                    data.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'software-item';
+                        div.innerHTML = `
+                            <div class="software-row">
+                                <span class="software-name">${item.name}</span>
+                                <span class="software-status">✅ 已添加</span>
+                                <button class="unlock-btn" onclick="unlockCode('${item.id}')">解锁粘贴</button>
+                            </div>
+                            <textarea class="software-code" id="${item.id}" readonly>${item.code}</textarea>
+                        `;
+                        list.appendChild(div);
+                    });
+                    list.appendChild(addBtn);
+                }
+            } catch (e) { console.log("软件区读取失败"); }
+        }
+
+        function saveSoftwareToLocalStorage() {
+            try {
+                const items = [];
+                document.querySelectorAll('.software-item').forEach(item => {
+                    const name = item.querySelector('.software-name').textContent;
+                    const code = item.querySelector('.software-code').value;
+                    const id = item.querySelector('.software-code').id;
+                    items.push({ id, name, code });
+                });
+                localStorage.setItem(SOFTWARE_STORAGE_KEY, JSON.stringify(items));
+            } catch (e) { console.log("软件区保存失败"); }
         }
 
         function initPageSelect() {
@@ -422,6 +470,19 @@ output=My_V2.apk</textarea>
                     initPageSelect();
                 }
                 input.remove(); btn.remove();
+            }
+        }
+
+        function deleteCurrentPage() {
+            if (pages.length <= 1) {
+                alert("至少要保留一个文件！");
+                return;
+            }
+            if (confirm("确定要删除这个文件？")) {
+                pages.splice(currentPageIndex, 1);
+                currentPageIndex = Math.max(0, currentPageIndex - 1);
+                saveToLocalStorage();
+                initPageSelect();
             }
         }
 
@@ -507,6 +568,7 @@ output=My_V2.apk</textarea>
             const el = document.getElementById(id);
             el.readOnly = false;
             el.style.color = '#fff';
+            el.addEventListener('input', saveSoftwareToLocalStorage);
         }
 
         function showSoftwareInput() {
@@ -535,6 +597,7 @@ output=My_V2.apk</textarea>
             `;
             list.insertBefore(item, list.lastChild);
             document.getElementById('softwareInputWrapper').style.display = 'none';
+            saveSoftwareToLocalStorage();
         }
 
         function buildPreviewAPK() {
