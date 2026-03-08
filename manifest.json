@@ -1,10 +1,12 @@
 {
   "name": "My",
   "short_name": "My",
-  "start_url": "/",
+  "start_url": "/My/",
+  "scope": "/My/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4285f4",
+  "description": "My PWA App",
   "icons": [
     {
       "src": "icon.png",
